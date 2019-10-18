@@ -1,4 +1,7 @@
-import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
+import {
+  TSESTree,
+  AST_NODE_TYPES,
+} from '@typescript-eslint/experimental-utils';
 import baseRule from 'eslint/lib/rules/no-useless-constructor';
 import * as util from '../util';
 
@@ -56,10 +59,11 @@ export default util.createRule<Options, MessageIds>({
   create(context) {
     const rules = baseRule.create(context);
     return {
-      MethodDefinition(node) {
+      MethodDefinition(node): void {
         if (
           node.value &&
           node.value.type === AST_NODE_TYPES.FunctionExpression &&
+          node.value.body &&
           checkAccessibility(node) &&
           checkParams(node)
         ) {

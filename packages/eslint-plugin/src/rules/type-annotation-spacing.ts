@@ -1,5 +1,5 @@
+import { TSESTree } from '@typescript-eslint/experimental-utils';
 import * as util from '../util';
-import { TSESTree } from '@typescript-eslint/typescript-estree';
 
 type Options = [
   {
@@ -15,7 +15,7 @@ type Options = [
         after?: boolean;
       };
     };
-  }?
+  }?,
 ];
 type MessageIds =
   | 'expectedSpaceAfter'
@@ -38,7 +38,6 @@ export default util.createRule<Options, MessageIds>({
     type: 'layout',
     docs: {
       description: 'Require consistent spacing around type annotations',
-      tslintRuleName: 'typedef-whitespace',
       category: 'Stylistic Issues',
       recommended: 'error',
     },
@@ -105,7 +104,7 @@ export default util.createRule<Options, MessageIds>({
       let previousToken = sourceCode.getTokenBefore(punctuatorTokenEnd)!;
       let type = punctuatorTokenEnd.value;
 
-      if (punctuators.indexOf(type) === -1) {
+      if (!punctuators.includes(type)) {
         return;
       }
 
@@ -186,12 +185,12 @@ export default util.createRule<Options, MessageIds>({
     }
 
     return {
-      TSMappedType(node) {
+      TSMappedType(node): void {
         if (node.typeAnnotation) {
           checkTypeAnnotationSpacing(node.typeAnnotation);
         }
       },
-      TSTypeAnnotation(node) {
+      TSTypeAnnotation(node): void {
         checkTypeAnnotationSpacing(node.typeAnnotation);
       },
     };

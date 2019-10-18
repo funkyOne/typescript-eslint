@@ -1,12 +1,12 @@
 import * as parser from '../src/parser';
-import { ParserOptions } from '../src/parser-options';
+import { TSESTreeOptions } from '../src/parser-options';
 
 /**
  * Returns a raw copy of the given AST
  * @param  {Object} ast the AST object
  * @returns {Object}     copy of the AST object
  */
-export function getRaw(ast: any) {
+export function getRaw(ast: parser.TSESTree.Program): parser.TSESTree.Program {
   return JSON.parse(
     JSON.stringify(ast, (key, value) => {
       if ((key === 'start' || key === 'end') && typeof value === 'number') {
@@ -19,8 +19,8 @@ export function getRaw(ast: any) {
 
 export function parseCodeAndGenerateServices(
   code: string,
-  config: ParserOptions,
-) {
+  config: TSESTreeOptions,
+): parser.ParseAndGenerateServicesResult<parser.TSESTreeOptions> {
   return parser.parseAndGenerateServices(code, config);
 }
 
@@ -28,26 +28,26 @@ export function parseCodeAndGenerateServices(
  * Returns a function which can be used as the callback of a Jest test() block,
  * and which performs an assertion on the snapshot for the given code and config.
  * @param {string} code The source code to parse
- * @param {ParserOptions} config the parser configuration
+ * @param {TSESTreeOptions} config the parser configuration
  * @param {boolean} generateServices Flag determining whether to generate ast maps and program or not
  * @returns {jest.ProvidesCallback} callback for Jest it() block
  */
 export function createSnapshotTestBlock(
   code: string,
-  config: ParserOptions,
+  config: TSESTreeOptions,
   generateServices?: true,
-) {
+): () => void {
   /**
    * @returns {Object} the AST object
    */
-  function parse() {
+  function parse(): parser.TSESTree.Program {
     const ast = generateServices
       ? parser.parseAndGenerateServices(code, config).ast
       : parser.parse(code, config);
     return getRaw(ast);
   }
 
-  return () => {
+  return (): void => {
     try {
       const result = parse();
       expect(result).toMatchSnapshot();

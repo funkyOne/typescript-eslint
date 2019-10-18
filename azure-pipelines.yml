@@ -24,12 +24,20 @@ jobs:
         displayName: 'Typecheck all packages'
 
       - script: |
-          yarn check-format
+          yarn format-check
         displayName: 'Check code formatting'
 
       - script: |
           yarn lint
         displayName: 'Run linting'
+
+      - script: |
+          yarn check:docs
+        displayName: 'Validate documentation'
+
+      - script: |
+          yarn check:configs
+        displayName: 'Validate plugin configs'
 
       - script: |
           yarn test
@@ -54,8 +62,6 @@ jobs:
           node_version: 10.x
         node_8_x:
           node_version: 8.x
-        node_6_x:
-          node_version: 6.x
     steps:
       - task: NodeTool@0
         inputs:

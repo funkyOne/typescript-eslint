@@ -20,6 +20,7 @@ export interface SourceLocation {
    */
   end: LineAndColumnData;
 }
+export type Range = [number, number];
 
 export interface BaseNode {
   /**
@@ -31,7 +32,7 @@ export interface BaseNode {
    * Both numbers are a 0-based index which is the position in the array of source code characters.
    * The first is the start position of the node, the second is the end position of the node.
    */
-  range: [number, number];
+  range: Range;
   /**
    * The parent node of the current node
    */
@@ -69,7 +70,7 @@ export type OptionalRangeAndLoc<T> = Pick<
   T,
   Exclude<keyof T, 'range' | 'loc'>
 > & {
-  range?: [number, number];
+  range?: Range;
   loc?: SourceLocation;
 };
 
@@ -138,6 +139,8 @@ export type Node =
   | NewExpression
   | ObjectExpression
   | ObjectPattern
+  | OptionalCallExpression
+  | OptionalMemberExpression
   | Program
   | Property
   | RestElement
@@ -254,6 +257,7 @@ export type ClassElement =
 export type DeclarationStatement =
   | ClassDeclaration
   | ClassExpression
+  | ExportDefaultDeclaration
   | ExportAllDeclaration
   | ExportNamedDeclaration
   | FunctionDeclaration
@@ -287,6 +291,7 @@ export type Expression =
   | JSXOpeningFragment
   | JSXSpreadChild
   | LogicalExpression
+  | NewExpression
   | RestElement
   | SequenceExpression
   | SpreadElement
@@ -320,9 +325,12 @@ export type LeftHandSideExpression =
   | FunctionExpression
   | LiteralExpression
   | MemberExpression
+  | OptionalCallExpression
+  | OptionalMemberExpression
   | PrimaryExpression
   | TaggedTemplateExpression
-  | TSNonNullExpression;
+  | TSNonNullExpression
+  | TSAsExpression;
 export type LiteralExpression = BigIntLiteral | Literal | TemplateLiteral;
 export type Modifier =
   | TSAbstractKeyword
@@ -422,8 +430,8 @@ export type TypeNode =
   | TSTupleType
   | TSTypeLiteral
   | TSTypeOperator
-  | TSTypeReference
   | TSTypePredicate
+  | TSTypeReference
   | TSTypeQuery
   | TSUndefinedKeyword
   | TSUnionType
@@ -450,9 +458,9 @@ interface BinaryExpressionBase extends BaseNode {
 interface ClassDeclarationBase extends BaseNode {
   typeParameters?: TSTypeParameterDeclaration;
   superTypeParameters?: TSTypeParameterInstantiation;
-  id?: Identifier;
+  id: Identifier | null;
   body: ClassBody;
-  superClass?: LeftHandSideExpression;
+  superClass: LeftHandSideExpression | null;
   implements?: ExpressionWithTypeArguments[];
   abstract?: boolean;
   declare?: boolean;
@@ -461,7 +469,7 @@ interface ClassDeclarationBase extends BaseNode {
 
 interface ClassPropertyBase extends BaseNode {
   key: PropertyName;
-  value: Expression;
+  value: Expression | null;
   computed: boolean;
   static: boolean;
   readonly?: boolean;
@@ -500,7 +508,7 @@ interface LiteralBase extends BaseNode {
 }
 
 interface MethodDefinitionBase extends BaseNode {
-  key: PropertyName;
+  key: Expression;
   value: FunctionExpression | TSEmptyBodyFunctionExpression;
   computed: boolean;
   static: boolean;
@@ -587,11 +595,19 @@ export interface BreakStatement extends BaseNode {
   label: Identifier | null;
 }
 
-export interface CallExpression extends BaseNode {
-  type: AST_NODE_TYPES.CallExpression;
+interface CallExpressionBase extends BaseNode {
   callee: LeftHandSideExpression;
   arguments: Expression[];
   typeParameters?: TSTypeParameterInstantiation;
+  optional: boolean;
+}
+export interface CallExpression extends CallExpressionBase {
+  type: AST_NODE_TYPES.CallExpression;
+  optional: false;
+}
+export interface OptionalCallExpression extends CallExpressionBase {
+  type: AST_NODE_TYPES.OptionalCallExpression;
+  optional: boolean;
 }
 
 export interface CatchClause extends BaseNode {
@@ -655,7 +671,7 @@ export interface ExportAllDeclaration extends BaseNode {
 
 export interface ExportDefaultDeclaration extends BaseNode {
   type: AST_NODE_TYPES.ExportDefaultDeclaration;
-  declaration: ExportDeclaration;
+  declaration: ExportDeclaration | Expression;
 }
 
 export interface ExportNamedDeclaration extends BaseNode {
@@ -728,7 +744,7 @@ export interface Import extends BaseNode {
 
 export interface ImportDeclaration extends BaseNode {
   type: AST_NODE_TYPES.ImportDeclaration;
-  source: Expression;
+  source: Literal;
   specifiers: ImportClause[];
 }
 
@@ -839,11 +855,19 @@ export interface LogicalExpression extends BinaryExpressionBase {
   type: AST_NODE_TYPES.LogicalExpression;
 }
 
-export interface MemberExpression extends BaseNode {
-  type: AST_NODE_TYPES.MemberExpression;
+interface MemberExpressionBase extends BaseNode {
   object: LeftHandSideExpression;
   property: Expression | Identifier;
-  computed?: boolean;
+  computed: boolean;
+  optional: boolean;
+}
+export interface MemberExpression extends MemberExpressionBase {
+  type: AST_NODE_TYPES.MemberExpression;
+  optional: false;
+}
+export interface OptionalMemberExpression extends MemberExpressionBase {
+  type: AST_NODE_TYPES.OptionalMemberExpression;
+  optional: boolean;
 }
 
 export interface MetaProperty extends BaseNode {
@@ -891,7 +915,7 @@ export interface Property extends BaseNode {
   computed: boolean;
   method: boolean;
   shorthand: boolean;
-  kind: 'init';
+  kind: 'init' | 'get' | 'set';
 }
 
 export interface RestElement extends BaseNode {
@@ -924,7 +948,7 @@ export interface Super extends BaseNode {
 
 export interface SwitchCase extends BaseNode {
   type: AST_NODE_TYPES.SwitchCase;
-  test: Expression;
+  test: Expression | null;
   consequent: Statement[];
 }
 
@@ -962,7 +986,7 @@ export interface ThisExpression extends BaseNode {
 
 export interface ThrowStatement extends BaseNode {
   type: AST_NODE_TYPES.ThrowStatement;
-  argument: Statement | null;
+  argument: Statement | TSAsExpression | null;
 }
 
 export interface TryStatement extends BaseNode {
@@ -1036,6 +1060,7 @@ export interface TSConstructSignatureDeclaration extends FunctionSignatureBase {
 }
 
 export interface TSDeclareFunction extends FunctionDeclarationBase {
+  id: Identifier;
   type: AST_NODE_TYPES.TSDeclareFunction;
 }
 
@@ -1308,7 +1333,7 @@ export interface TSTypeAnnotation extends BaseNode {
 export interface TSTypeAssertion extends BaseNode {
   type: AST_NODE_TYPES.TSTypeAssertion;
   typeAnnotation: TypeNode;
-  expression: UnaryExpression;
+  expression: Expression;
 }
 
 export interface TSTypeLiteral extends BaseNode {
@@ -1318,8 +1343,8 @@ export interface TSTypeLiteral extends BaseNode {
 
 export interface TSTypeOperator extends BaseNode {
   type: AST_NODE_TYPES.TSTypeOperator;
-  operator: 'keyof' | 'unique';
-  typeAnnotation?: TSTypeAnnotation;
+  operator: 'keyof' | 'unique' | 'readonly';
+  typeAnnotation?: TypeNode;
 }
 
 export interface TSTypeParameter extends BaseNode {
@@ -1341,8 +1366,9 @@ export interface TSTypeParameterInstantiation extends BaseNode {
 
 export interface TSTypePredicate extends BaseNode {
   type: AST_NODE_TYPES.TSTypePredicate;
+  asserts: boolean;
   parameterName: Identifier | TSThisType;
-  typeAnnotation: TSTypeAnnotation;
+  typeAnnotation: TSTypeAnnotation | null;
 }
 
 export interface TSTypeQuery extends BaseNode {
@@ -1383,6 +1409,7 @@ export interface UnaryExpression extends UnaryExpressionBase {
 
 export interface VariableDeclaration extends BaseNode {
   type: AST_NODE_TYPES.VariableDeclaration;
+  // NOTE - this is not guaranteed to have any elements in it. i.e. `const;`
   declarations: VariableDeclarator[];
   kind: 'let' | 'const' | 'var';
   declare?: boolean;

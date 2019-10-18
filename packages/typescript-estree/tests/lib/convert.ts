@@ -1,3 +1,5 @@
+// deeplyCopy is private internal
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Converter } from '../../src/convert';
 import ts from 'typescript';
 
@@ -18,7 +20,7 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: false,
+      shouldPreserveNodeMaps: false,
     });
     expect(instance.convertProgram()).toMatchSnapshot();
   });
@@ -29,7 +31,7 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: false,
+      shouldPreserveNodeMaps: false,
     });
     expect((instance as any).deeplyCopy(ast.statements[0])).toMatchSnapshot();
   });
@@ -40,7 +42,7 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: false,
+      shouldPreserveNodeMaps: false,
     });
     expect((instance as any).deeplyCopy(ast.statements[0])).toMatchSnapshot();
   });
@@ -51,7 +53,7 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: false,
+      shouldPreserveNodeMaps: false,
     });
     expect(
       (instance as any).deeplyCopy((ast.statements[0] as any).expression),
@@ -64,7 +66,7 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: false,
+      shouldPreserveNodeMaps: false,
     });
     expect((instance as any).deeplyCopy(ast)).toMatchSnapshot();
   });
@@ -75,7 +77,7 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: true,
       useJSXTextNode: false,
-      shouldProvideParserServices: false,
+      shouldPreserveNodeMaps: false,
     });
     expect(() => instance.convertProgram()).toThrow(
       'Unknown AST_NODE_TYPE: "TSJSDocNullableType"',
@@ -93,12 +95,12 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: true,
+      shouldPreserveNodeMaps: true,
     });
     instance.convertProgram();
     const maps = instance.getASTMaps();
 
-    function checkMaps(child: any) {
+    function checkMaps(child: any): void {
       child.forEachChild((node: any) => {
         if (
           node.kind !== ts.SyntaxKind.EndOfFileToken &&
@@ -127,12 +129,12 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: true,
+      shouldPreserveNodeMaps: true,
     });
     instance.convertProgram();
     const maps = instance.getASTMaps();
 
-    function checkMaps(child: any) {
+    function checkMaps(child: any): void {
       child.forEachChild((node: any) => {
         if (
           node.kind !== ts.SyntaxKind.EndOfFileToken &&
@@ -160,12 +162,12 @@ describe('convert', () => {
     const instance = new Converter(ast, {
       errorOnUnknownASTType: false,
       useJSXTextNode: false,
-      shouldProvideParserServices: true,
+      shouldPreserveNodeMaps: true,
     });
     const program = instance.convertProgram();
     const maps = instance.getASTMaps();
 
-    function checkMaps(child: any) {
+    function checkMaps(child: any): void {
       child.forEachChild((node: any) => {
         if (node.kind !== ts.SyntaxKind.EndOfFileToken) {
           expect(ast).toBe(
@@ -182,7 +184,7 @@ describe('convert', () => {
 
     expect(maps.esTreeNodeToTSNodeMap.get(program.body[0])).toBeDefined();
     expect(program.body[0]).not.toBe(
-      maps.tsNodeToESTreeNodeMap.get(ast.statements[0]),
+      maps.tsNodeToESTreeNodeMap.get(ast.statements[0] as any),
     );
     checkMaps(ast);
   });

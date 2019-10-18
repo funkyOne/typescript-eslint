@@ -1,5 +1,5 @@
-import * as ts from 'typescript';
-import { TSESTree } from '@typescript-eslint/typescript-estree';
+import { TSESTree } from '@typescript-eslint/experimental-utils';
+import ts from 'typescript';
 import * as util from '../util';
 
 export default util.createRule({
@@ -12,6 +12,7 @@ export default util.createRule({
       description: 'Enforce giving `compare` argument to `Array#sort`',
       category: 'Best Practices',
       recommended: false,
+      requiresTypeChecking: true,
     },
     messages: {
       requireCompare: "Require 'compare' argument.",
@@ -26,7 +27,7 @@ export default util.createRule({
     return {
       "CallExpression[arguments.length=0] > MemberExpression[property.name='sort'][computed=false]"(
         node: TSESTree.MemberExpression,
-      ) {
+      ): void {
         // Get the symbol of the `sort` method.
         const tsNode = service.esTreeNodeToTSNodeMap.get(node);
         const sortSymbol = checker.getSymbolAtLocation(tsNode);

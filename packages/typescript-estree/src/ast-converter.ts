@@ -1,20 +1,24 @@
-import { convertError, Converter } from './convert';
+import { SourceFile } from 'typescript';
+import { convertError, Converter, ASTMaps } from './convert';
 import { convertComments } from './convert-comments';
 import { convertTokens } from './node-utils';
-import ts from 'typescript';
 import { Extra } from './parser-options';
+import { TSESTree } from './ts-estree';
 
-export default function astConverter(
-  ast: ts.SourceFile,
+export function astConverter(
+  ast: SourceFile,
   extra: Extra,
-  shouldProvideParserServices: boolean,
-) {
+  shouldPreserveNodeMaps: boolean,
+): { estree: TSESTree.Program; astMaps: ASTMaps | undefined } {
   /**
    * The TypeScript compiler produced fundamental parse errors when parsing the
    * source.
    */
-  if ((ast as any).parseDiagnostics.length) {
-    throw convertError((ast as any).parseDiagnostics[0]);
+  // internal typescript api...
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parseDiagnostics = (ast as any).parseDiagnostics;
+  if (parseDiagnostics.length) {
+    throw convertError(parseDiagnostics[0]);
   }
 
   /**
@@ -23,7 +27,7 @@ export default function astConverter(
   const instance = new Converter(ast, {
     errorOnUnknownASTType: extra.errorOnUnknownASTType || false,
     useJSXTextNode: extra.useJSXTextNode || false,
-    shouldProvideParserServices,
+    shouldPreserveNodeMaps,
   });
 
   const estree = instance.convertProgram();
@@ -42,9 +46,7 @@ export default function astConverter(
     estree.comments = convertComments(ast, extra.code);
   }
 
-  const astMaps = shouldProvideParserServices
-    ? instance.getASTMaps()
-    : undefined;
+  const astMaps = shouldPreserveNodeMaps ? instance.getASTMaps() : undefined;
 
   return { estree, astMaps };
 }

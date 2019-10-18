@@ -65,10 +65,6 @@ let f: Foo;
 f = Foo.ONE;`,
     `
 enum Foo { ONE = 1, TWO = 2 };
-let f: Foo;
-f = Foo.ONE;`,
-    `
-enum Foo { ONE = 1, TWO = 2 };
 function foo(f: Foo) {};
 foo(Foo.ONE);`,
     `

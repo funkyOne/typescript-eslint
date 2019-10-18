@@ -1,4 +1,4 @@
-import { TSESTree } from '@typescript-eslint/typescript-estree';
+import { TSESTree } from '@typescript-eslint/experimental-utils';
 import ts from 'typescript';
 import * as tsutils from 'tsutils';
 import * as util from '../util';
@@ -8,9 +8,9 @@ export default util.createRule({
   meta: {
     docs: {
       category: 'Best Practices',
-      description: 'Warns when a namespace qualifier is unnecessary.',
+      description: 'Warns when a namespace qualifier is unnecessary',
       recommended: false,
-      tslintName: 'no-unnecessary-qualifier',
+      requiresTypeChecking: true,
     },
     fixable: 'code',
     messages: {
@@ -133,7 +133,7 @@ export default util.createRule({
       namespacesInScope.push(esTreeNodeToTSNodeMap.get(node));
     }
 
-    function exitDeclaration() {
+    function exitDeclaration(): void {
       namespacesInScope.pop();
     }
 

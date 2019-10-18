@@ -1,4 +1,7 @@
-import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
+import {
+  TSESTree,
+  AST_NODE_TYPES,
+} from '@typescript-eslint/experimental-utils';
 import baseRule from 'eslint/lib/rules/camelcase';
 import * as util from '../util';
 
@@ -6,7 +9,7 @@ type Options = util.InferOptionsTypeFromRule<typeof baseRule>;
 type MessageIds = util.InferMessageIdsTypeFromRule<typeof baseRule>;
 
 export default util.createRule<Options, MessageIds>({
-  name: 'ban-types',
+  name: 'camelcase',
   meta: {
     type: 'suggestion',
     docs: {
@@ -34,7 +37,10 @@ export default util.createRule<Options, MessageIds>({
     ];
 
     const properties = options.properties;
-    const allow = options.allow!;
+    const allow = (options.allow || []).map(entry => ({
+      name: entry,
+      regex: new RegExp(entry),
+    }));
 
     /**
      * Checks if a string contains an underscore and isn't all upper-case
@@ -42,7 +48,7 @@ export default util.createRule<Options, MessageIds>({
      */
     function isUnderscored(name: string): boolean {
       // if there's an underscore, it might be A_CONSTANT, which is okay
-      return name.indexOf('_') > -1 && name !== name.toUpperCase();
+      return name.includes('_') && name !== name.toUpperCase();
     }
 
     /**
@@ -54,7 +60,7 @@ export default util.createRule<Options, MessageIds>({
     function isAllowed(name: string): boolean {
       return (
         allow.findIndex(
-          entry => name === entry || name.match(new RegExp(entry)) !== null,
+          entry => name === entry.name || entry.regex.test(name),
         ) !== -1
       );
     }
@@ -84,7 +90,7 @@ export default util.createRule<Options, MessageIds>({
     }
 
     return {
-      Identifier(node) {
+      Identifier(node): void {
         /*
          * Leading and trailing underscores are commonly used to flag
          * private/protected identifiers, strip them

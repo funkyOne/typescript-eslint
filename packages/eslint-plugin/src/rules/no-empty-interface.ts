@@ -3,7 +3,7 @@ import * as util from '../util';
 type Options = [
   {
     allowSingleExtends?: boolean;
-  }
+  },
 ];
 type MessageIds = 'noEmpty' | 'noEmptyWithSuper';
 
@@ -13,7 +13,6 @@ export default util.createRule<Options, MessageIds>({
     type: 'suggestion',
     docs: {
       description: 'Disallow the declaration of empty interfaces',
-      tslintRuleName: 'no-empty-interface',
       category: 'Best Practices',
       recommended: 'error',
     },
@@ -41,7 +40,7 @@ export default util.createRule<Options, MessageIds>({
   ],
   create(context, [{ allowSingleExtends }]) {
     return {
-      TSInterfaceDeclaration(node) {
+      TSInterfaceDeclaration(node): void {
         if (node.body.body.length !== 0) {
           // interface contains members --> Nothing to report
           return;

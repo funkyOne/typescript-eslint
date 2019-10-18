@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import * as util from '../util';
-import { TSESTree } from '@typescript-eslint/typescript-estree';
+import { TSESTree } from '@typescript-eslint/experimental-utils';
 
 export default util.createRule({
   name: 'no-enum-literals',
@@ -50,7 +50,7 @@ export default util.createRule({
     }
 
     return {
-      AssignmentExpression(node) {
+      AssignmentExpression(node): void {
         if (
           isNodeEnumIdentifier(node.left) &&
           isNumberOrStringLiteral(node.right)
@@ -61,7 +61,7 @@ export default util.createRule({
           });
         }
       },
-      BinaryExpression(node) {
+      BinaryExpression(node): void {
         if (
           isNodeEnumIdentifier(node.left) &&
           isNumberOrStringLiteral(node.right)
@@ -82,7 +82,7 @@ export default util.createRule({
           });
         }
       },
-      VariableDeclarator(node) {
+      VariableDeclarator(node): void {
         if (
           isNodeEnumIdentifier(node.id) &&
           node.init &&

@@ -1,29 +1,65 @@
+import {
+  TSESTree,
+  AST_NODE_TYPES,
+} from '@typescript-eslint/experimental-utils';
 import * as util from '../util';
-import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
 
-export default util.createRule({
+type Options = [
+  {
+    allowUnderscorePrefix?: boolean;
+  },
+];
+type MessageIds = 'notPascalCased';
+
+export default util.createRule<Options, MessageIds>({
   name: 'class-name-casing',
   meta: {
     type: 'suggestion',
     docs: {
       description: 'Require PascalCased class and interface names',
-      tslintRuleName: 'class-name',
       category: 'Best Practices',
       recommended: 'error',
     },
     messages: {
       notPascalCased: "{{friendlyName}} '{{name}}' must be PascalCased.",
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          allowUnderscorePrefix: {
+            type: 'boolean',
+            default: false,
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
   },
-  defaultOptions: [],
-  create(context) {
+  defaultOptions: [{ allowUnderscorePrefix: false }],
+  create(context, [options]) {
+    const UNDERSCORE = '_';
+
+    /**
+     * Determine if the string is Upper cased
+     * @param str
+     */
+    function isUpperCase(str: string): boolean {
+      return str === str.toUpperCase();
+    }
+
     /**
      * Determine if the identifier name is PascalCased
      * @param name The identifier name
      */
     function isPascalCase(name: string): boolean {
-      return /^[A-Z][0-9A-Za-z]*$/.test(name);
+      const startIndex =
+        options.allowUnderscorePrefix && name.startsWith(UNDERSCORE) ? 1 : 0;
+
+      return (
+        isUpperCase(name.charAt(startIndex)) &&
+        !name.includes(UNDERSCORE, startIndex)
+      );
     }
 
     /**
@@ -62,7 +98,7 @@ export default util.createRule({
           | TSESTree.ClassDeclaration
           | TSESTree.TSInterfaceDeclaration
           | TSESTree.ClassExpression,
-      ) {
+      ): void {
         // class expressions (i.e. export default class {}) are OK
         if (node.id && !isPascalCase(node.id.name)) {
           report(node, node.id);
@@ -70,7 +106,7 @@ export default util.createRule({
       },
       "VariableDeclarator[init.type='ClassExpression']"(
         node: TSESTree.VariableDeclarator,
-      ) {
+      ): void {
         if (
           node.id.type === AST_NODE_TYPES.ArrayPattern ||
           node.id.type === AST_NODE_TYPES.ObjectPattern

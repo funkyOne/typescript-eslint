@@ -1,5 +1,5 @@
-import ts from 'typescript';
 import unescape from 'lodash.unescape';
+import * as ts from 'typescript'; // leave this as * as ts so people using util package don't need syntheticDefaultImports
 import { AST_NODE_TYPES, AST_TOKEN_TYPES, TSESTree } from './ts-estree';
 
 const SyntaxKind = ts.SyntaxKind;
@@ -20,9 +20,12 @@ const ASSIGNMENT_OPERATORS: ts.AssignmentOperator[] = [
   SyntaxKind.CaretEqualsToken,
 ];
 
-const LOGICAL_OPERATORS: ts.LogicalOperator[] = [
+const LOGICAL_OPERATORS: (
+  | ts.LogicalOperator
+  | ts.SyntaxKind.QuestionQuestionToken)[] = [
   SyntaxKind.BarBarToken,
   SyntaxKind.AmpersandAmpersandToken,
+  SyntaxKind.QuestionQuestionToken,
 ];
 
 const TOKEN_TO_TEXT: { readonly [P in ts.SyntaxKind]?: string } = {
@@ -86,6 +89,9 @@ const TOKEN_TO_TEXT: { readonly [P in ts.SyntaxKind]?: string } = {
   [SyntaxKind.KeyOfKeyword]: 'keyof',
   [SyntaxKind.NewKeyword]: 'new',
   [SyntaxKind.ImportKeyword]: 'import',
+  [SyntaxKind.ReadonlyKeyword]: 'readonly',
+  [SyntaxKind.QuestionQuestionToken]: '??',
+  [SyntaxKind.QuestionDotToken]: '?.',
 };
 
 /**
@@ -93,10 +99,10 @@ const TOKEN_TO_TEXT: { readonly [P in ts.SyntaxKind]?: string } = {
  * @param operator the operator token
  * @returns is assignment
  */
-export function isAssignmentOperator(
-  operator: ts.Token<ts.AssignmentOperator>,
+export function isAssignmentOperator<T extends ts.SyntaxKind>(
+  operator: ts.Token<T>,
 ): boolean {
-  return ASSIGNMENT_OPERATORS.indexOf(operator.kind) > -1;
+  return (ASSIGNMENT_OPERATORS as ts.SyntaxKind[]).includes(operator.kind);
 }
 
 /**
@@ -104,10 +110,10 @@ export function isAssignmentOperator(
  * @param operator the operator token
  * @returns is a logical operator
  */
-export function isLogicalOperator(
-  operator: ts.Token<ts.LogicalOperator>,
+export function isLogicalOperator<T extends ts.SyntaxKind>(
+  operator: ts.Token<T>,
 ): boolean {
-  return LOGICAL_OPERATORS.indexOf(operator.kind) > -1;
+  return (LOGICAL_OPERATORS as ts.SyntaxKind[]).includes(operator.kind);
 }
 
 /**
@@ -194,8 +200,8 @@ export function isJSDocComment(node: ts.Node): boolean {
  * @param operator the operator token
  * @returns the binary expression type
  */
-export function getBinaryExpressionType(
-  operator: ts.Token<any>,
+export function getBinaryExpressionType<T extends ts.SyntaxKind>(
+  operator: ts.Token<T>,
 ):
   | AST_NODE_TYPES.AssignmentExpression
   | AST_NODE_TYPES.LogicalExpression
@@ -443,6 +449,8 @@ export function isOptional(node: {
  * @param token the ts.Token
  * @returns the token type
  */
+// ts.Node types are ugly
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getTokenType(token: any): AST_TOKEN_TYPES {
   // Need two checks for keywords since some are also identifiers
   if (token.originalKeywordKind) {
@@ -454,6 +462,8 @@ export function getTokenType(token: any): AST_TOKEN_TYPES {
       case SyntaxKind.SetKeyword:
       case SyntaxKind.TypeKeyword:
       case SyntaxKind.ModuleKeyword:
+      case SyntaxKind.AsyncKeyword:
+      case SyntaxKind.IsKeyword:
         return AST_TOKEN_TYPES.Identifier;
 
       default:
@@ -549,17 +559,17 @@ export function convertToken(
   ast: ts.SourceFile,
 ): TSESTree.Token {
   const start =
-      token.kind === SyntaxKind.JsxText
-        ? token.getFullStart()
-        : token.getStart(ast),
-    end = token.getEnd(),
-    value = ast.text.slice(start, end),
-    newToken: TSESTree.Token = {
-      type: getTokenType(token),
-      value,
-      range: [start, end],
-      loc: getLocFor(start, end, ast),
-    };
+    token.kind === SyntaxKind.JsxText
+      ? token.getFullStart()
+      : token.getStart(ast);
+  const end = token.getEnd();
+  const value = ast.text.slice(start, end);
+  const newToken: TSESTree.Token = {
+    type: getTokenType(token),
+    value,
+    range: [start, end],
+    loc: getLocFor(start, end, ast),
+  };
 
   if (newToken.type === 'RegularExpression') {
     newToken.regex = {
@@ -637,6 +647,13 @@ export function getNodeContainer(
   return container!;
 }
 
+export interface TSError {
+  index: number;
+  lineNumber: number;
+  column: number;
+  message: string;
+}
+
 /**
  * @param ast     the AST object
  * @param start      the index at which the error starts
@@ -647,7 +664,7 @@ export function createError(
   ast: ts.SourceFile,
   start: number,
   message: string,
-) {
+): TSError {
   const loc = ast.getLineAndCharacterOfPosition(start);
   return {
     index: start,
@@ -661,11 +678,12 @@ export function createError(
  * @param n the TSNode
  * @param ast the TS AST
  */
-export function nodeHasTokens(n: ts.Node, ast: ts.SourceFile) {
+export function nodeHasTokens(n: ts.Node, ast: ts.SourceFile): boolean {
   // If we have a token or node that has a non-zero width, it must have tokens.
   // Note: getWidth() does not take trivia into account.
   return n.kind === SyntaxKind.EndOfFileToken
-    ? !!(n as any).jsDoc
+    ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      !!(n as any).jsDoc
     : n.getWidth(ast) !== 0;
 }
 
@@ -677,7 +695,7 @@ export function nodeHasTokens(n: ts.Node, ast: ts.SourceFile) {
  * @param callback
  */
 export function firstDefined<T, U>(
-  array: ReadonlyArray<T> | undefined,
+  array: readonly T[] | undefined,
   callback: (element: T, index: number) => U | undefined,
 ): U | undefined {
   if (array === undefined) {
