@@ -65,6 +65,10 @@ let f: Foo;
 f = Foo.ONE;`,
     `
 enum Foo { ONE = 1, TWO = 2 };
+let f: Foo | string;
+f = "THREE";`,
+    `
+enum Foo { ONE = 1, TWO = 2 };
 function foo(f: Foo) {};
 foo(Foo.ONE);`,
     `
@@ -98,9 +102,49 @@ foo(Foo.ONE, "TWO");`,
 enum Foo { ONE = "ONE", TWO = "TWO" };
 function foo(f1: string, f2: Foo) {};
 foo("ONE", Foo.TWO);`,
+    `
+enum Foo { ONE = "ONE", TWO = "TWO" };
+function foo(f1: string) {};
+function foo(f1: string, f2: Foo) {};
+foo("ONE", Foo.TWO);`,
+    `
+enum Foo { ONE = "ONE", TWO = "TWO" };
+function foo(f1: Foo | number) {};
+foo(4);`,
+    `
+enum Foo { ONE = "ONE", TWO = "TWO" };
+function foo(f1: Foo | string) {};
+foo("THREE");`,
   ],
 
   invalid: [
+    {
+      code: `
+enum Foo { ONE = "ONE", TWO = "TWO" };
+function foo(f1: Foo | number) {};
+foo("ONE");`,
+      errors: [
+        {
+          messageId: 'noLiterals',
+          line: 3,
+          column: 5,
+        },
+      ],
+    },
+    {
+      code: `
+enum Foo { ONE = "ONE", TWO = "TWO" };
+function foo(f1: string) {};
+function foo(f1: string, f2: Foo) {};
+foo(Foo.ONE, "TWO");`,
+      errors: [
+        {
+          messageId: 'noLiterals',
+          line: 5,
+          column: 14,
+        },
+      ],
+    },
     {
       code: `
 enum Foo { ONE = "ONE", TWO = "TWO" };
@@ -145,6 +189,19 @@ foo(Foo.ONE, "TWO");`,
 enum Foo { ONE, TWO };
 let f: Foo;
 (f === 0);`,
+      errors: [
+        {
+          messageId: 'noLiterals',
+          line: 4,
+          column: 8,
+        },
+      ],
+    },
+    {
+      code: `
+enum Foo { ONE, TWO };
+let f: Foo | string;
+(f === "TWO");`,
       errors: [
         {
           messageId: 'noLiterals',
