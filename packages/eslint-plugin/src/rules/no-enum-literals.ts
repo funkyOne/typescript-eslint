@@ -1,6 +1,8 @@
-import ts from 'typescript';
-import * as util from '../util';
 import { TSESTree } from '@typescript-eslint/experimental-utils';
+import * as tsutils from 'tsutils';
+import ts from 'typescript';
+
+import * as util from '../util';
 
 export default util.createRule({
   name: 'no-enum-literals',
@@ -10,6 +12,7 @@ export default util.createRule({
       description: 'Disallows usage of literals instead of enums',
       category: 'Best Practices',
       recommended: 'error',
+      requiresTypeChecking: true,
     },
     messages: {
       noLiterals: 'Do not use literal values instead of enums',
@@ -21,6 +24,12 @@ export default util.createRule({
     const parserServices = util.getParserServices(context);
     const checker = parserServices.program.getTypeChecker();
 
+    function isEnumType(type: ts.Type): boolean {
+      if (type.symbol == null) return false;
+
+      return !['Number', 'String'].includes(type.symbol.name);
+    }
+
     /**
      * is node an identifier with type of an enum
      * @param node identifier node
@@ -31,13 +40,7 @@ export default util.createRule({
       >(node);
       const type = checker.getTypeAtLocation(originalNode);
 
-      if (!type.symbol) {
-        return false;
-      }
-
-      const { name } = type.symbol;
-
-      return !['Number', 'String'].includes(name);
+      return isEnumType(type);
     }
 
     function isNumberOrStringLiteral(
@@ -47,6 +50,35 @@ export default util.createRule({
         node.type === 'Literal' &&
         ['number', 'string'].includes(typeof node.value)
       );
+    }
+
+    function getEnumParams(identifier: TSESTree.Node): Set<number> {
+      const originalNode = parserServices.esTreeNodeToTSNodeMap.get<
+        ts.Identifier
+      >(identifier);
+
+      const type = checker.getTypeAtLocation(originalNode);
+
+      const enumParams = new Set<number>();
+
+      for (const subType of tsutils.unionTypeParts(type)) {
+        const signatures = subType.getCallSignatures();
+
+        for (const signature of signatures) {
+          for (const [index, parameter] of signature.parameters.entries()) {
+            const type = checker.getTypeOfSymbolAtLocation(
+              parameter,
+              originalNode,
+            );
+
+            if (isEnumType(type)) {
+              enumParams.add(index);
+            }
+          }
+        }
+      }
+
+      return enumParams;
     }
 
     return {
@@ -93,6 +125,31 @@ export default util.createRule({
             messageId: 'noLiterals',
           });
         }
+      },
+      CallExpression(node): void {
+        const enumParams = getEnumParams(node.callee);
+
+        for (const enumParamIndex of enumParams.values()) {
+          const argument = node.arguments[enumParamIndex];
+
+          if (isNumberOrStringLiteral(argument)) {
+            context.report({
+              messageId: 'noLiterals',
+              node: argument,
+            });
+          }
+        }
+
+        // for (const [index, argument] of node.arguments.entries()) {
+        //   if (!enumParams.has(index)) continue;
+
+        //   if (isNumberOrStringLiteral(argument)) {
+        //     context.report({
+        //       messageId: 'noLiterals',
+        //       node: argument,
+        //     });
+        //   }
+        // }
       },
     };
   },
